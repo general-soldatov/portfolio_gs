@@ -3,7 +3,7 @@ from telebot import types # для указания типов
 from mysql.connector import connect
 import time
 from datetime import datetime
-from telefunc import tel_token, sql_base_read_
+from telefunc import tel_token, sql_base_read_, admin
 
 
 def user_sql(user_id): #регистрация пользователя в списке рассылок
@@ -127,6 +127,7 @@ def group(message):
     else:
         username = surname + " " + name + " " + aftername
     user_sql_reg(user_id, username, group, surname, name, aftername, study)
+    bot.send_message(admin(), "Пользователь " + username +" добавлен")
     name_dict[str(message.chat.id)].clear()
     markup = button_default()
     bot.send_message(message.chat.id, "Приятно познакомиться! Теперь ты можешь пользоваться кнопками на телеграм-клавиатуре.", reply_markup=markup)
@@ -163,7 +164,7 @@ def coder(message):
 
 @bot.message_handler(commands=['sendall'])  #команда рассылки сообщения пользователям
 def sendall(message):
-    if message.from_user.id == 980314213:
+    if message.from_user.id == admin():
         msg = bot.send_message(message.chat.id, "Напиши сообщение для рассылки!")
         bot.register_next_step_handler(msg, mailling)
 
