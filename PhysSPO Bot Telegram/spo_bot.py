@@ -2,9 +2,8 @@ import telebot
 from telebot import types # для указания типов
 import time
 from datetime import datetime
-from telefunc import tel_token, sql_base_read_, admin
+from telefunc import tel_token, admin
 from random import randint
-
 
 class TaskSpo(object):
 
@@ -81,7 +80,6 @@ def send_welcome(message): #функция на команды
 	bot.register_next_step_handler(msg, group)
 	name_dict.update({str(message.chat.id):[]})
 
-
 def group(message):
     text = message.text
     name_dict[str(message.chat.id)].append(text)
@@ -93,7 +91,6 @@ def group(message):
     bot.register_next_step_handler(msg, test)
     varTask.update({str(message.chat.id): []})
 
-
 def test(message):
     text = message.text
     name_dict[str(message.chat.id)].append(text)
@@ -102,8 +99,6 @@ def test(message):
     markup.add(btn1)
     bot.send_message(message.chat.id, "Нажми при готовности!", reply_markup=markup)
     test_data.update({str(message.chat.id):[]})
-
-
 
 @bot.message_handler(content_types = ["text"]) #обработчик текстовых сообщений пользователя
 def echo(message): #функция ответа на сообщения
@@ -121,8 +116,6 @@ def echo(message): #функция ответа на сообщения
 
     elif message.text == "Привет":
         bot.send_message(message.chat.id, f"Приветик, {message.from_user.first_name}!")
-
-
 
 def din(message):
     rast = 0
@@ -190,11 +183,6 @@ def res(message):
     bot.send_message(message.chat.id, f"Задачи решены на {testRes} %")
     text = f"Обучающийся профиля {name_dict[str(message.chat.id)][1]}: {name_dict[str(message.chat.id)][0]} (id: {message.chat.id}) решил задачи на {testRes} %"
     bot.send_message(admin(), text)
-
-
-
-
-
 
 import logging
 import sys
