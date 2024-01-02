@@ -4,6 +4,7 @@ from mysql.connector import connect
 import time
 from datetime import datetime
 from telefunc import tel_token, sql_base_read_, admin
+import pandas as pd
 
 
 def user_sql(user_id): #регистрация пользователя в списке рассылок
@@ -19,7 +20,7 @@ def user_sql(user_id): #регистрация пользователя в сп�
 def user_select(message):  # подпрограмма рассылки пользователям сообщений
     with sql_base_read_() as connection:
         print(connection)
-        show_select = "SELECT user_id FROM namedata"
+        show_select = "SELECT user_id FROM data_user"
         with connection.cursor() as cursor:
             cursor.execute(show_select)
             for result in cursor.fetchall():
@@ -35,6 +36,25 @@ def user_sql_reg(user_id, username, group, surname, name, aftername, study): #р
             connection.commit()
             print("user registered")
 
+def user_reg(user_id, name, profile, name_group, section, variant, variant_D1): #регистрация студента в базе данных
+    with sql_base_read_() as connection:
+        print(connection)
+        show_db_query = "INSERT INTO data_user (user_id, name, profile, name_group, section, variant, variant_D1) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        data_tg = [(user_id, name, profile, name_group, section, variant, variant_D1)]
+        with connection.cursor() as cursor:
+            cursor.executemany(show_db_query, data_tg)
+            connection.commit()
+            print("user registered")
+
+def var(user_id):
+    with sql_base_read_() as connection:
+        print(connection)
+        show_select = f"SELECT name, variant, variant_D1 FROM data_user WHERE user_id = {user_id}"
+        with connection.cursor() as cursor:
+            cursor.execute(show_select)
+            res = cursor.fetchall()
+            text = f'Обучающийся {res[0][0]}: \nВариант №{res[0][1]}, для Д1 №{res[0][2]}'
+            return text
 
 token = tel_token()
 
@@ -67,7 +87,7 @@ def button_default():  #кнопки по умолчанию
 
 @bot.message_handler(commands=['start']) # функция начала работы бота с регистрацией студента в БД
 def send_welcome(message): #функция на команды
-	msg = bot.reply_to(message, "Приветствую! Я твой телеграм-помощник в области теоретической механики. Давайте познакомимся, напиши свою фамилию:")
+	msg = bot.reply_to(message, "Приветствую! Я твой телеграм-помощник в области теоретической механики. Давайте познакомимся, напиши свою фамилию имя отчество:")
 	user_sql(message.from_user.id)
 	bot.register_next_step_handler(msg, surname)
 	name_dict.update({str(message.chat.id):[]})
@@ -75,62 +95,43 @@ def send_welcome(message): #функция на команды
 
 def surname(message):
     text = message.text
-    name_dict[str(message.chat.id)].append(text)
-    msg = bot.send_message(message.chat.id, "Напиши имя:")
-    bot.register_next_step_handler(msg, name)
+    df = pd.read_excel('Контингент.xlsx')
+    try:
+        name_dict[str(message.chat.id)].append(df.loc[df['name'] == text.title()]['name'].values[0])
+        name_dict[str(message.chat.id)].append(df.loc[df['name'] == name_dict[str(message.chat.id)][0]]['profile'].values[0])
+        name_dict[str(message.chat.id)].append(str(df.loc[df['name'] == name_dict[str(message.chat.id)][0]]['group'].values[0]))
+        name_dict[str(message.chat.id)].append(df.loc[df['name'] == name_dict[str(message.chat.id)][0]]['section'].values[0])
+        name_dict[str(message.chat.id)].append(str(df.loc[df['name'] == name_dict[str(message.chat.id)][0]]['variant'].values[0]))
+        name_dict[str(message.chat.id)].append(str(df.loc[df['name'] == name_dict[str(message.chat.id)][0]]['variant_D1'].values[0]))
+
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton("Нет")
+        btn2 = types.KeyboardButton("Да")
+        markup.add(btn1, btn2)
+        msg = bot.send_message(message.chat.id,
+            f'Подтвердите личность: {name_dict[str(message.chat.id)][0]}, направление {name_dict[str(message.chat.id)][1]}, группа {name_dict[str(message.chat.id)][2]}, подгруппа {name_dict[str(message.chat.id)][3]}',
+            reply_markup=markup)
+        bot.register_next_step_handler(msg, name)
+
+    except:
+        msg = bot.send_message(message.chat.id, "Проверьте правильность ввода данных.")
+        bot.register_next_step_handler(msg, surname)
+
+
 
 def name(message):
     text = message.text
-    name_dict[str(message.chat.id)].append(text)
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("Нет отчества")
-    markup.add(btn1)
-    msg = bot.send_message(message.chat.id, "Напиши отчество, если его нет, нажми кнопку:", reply_markup=markup)
-    bot.register_next_step_handler(msg, aftername)
-
-
-def aftername(message):
-    text = message.text
-    name_dict[str(message.chat.id)].append(text)
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("очное")
-    btn2 = types.KeyboardButton("заочное")
-    markup.add(btn1, btn2)
-    msg = bot.send_message(message.chat.id, "Выбери форму обучения с помощью кнопок:", reply_markup=markup)
-    bot.register_next_step_handler(msg, study)
-
-def study(message):
-    text = message.text
-    name_dict[str(message.chat.id)].append(text)
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("Тм 1-1")
-    btn2 = types.KeyboardButton("Тм 1-2")
-    btn3 = types.KeyboardButton("НТТС 2-9")
-    btn4 = types.KeyboardButton("НТТС 2-10")
-    markup.add(btn1, btn2, btn3, btn4)
-    msg = bot.send_message(message.chat.id, "Выбери группу с помощью кнопок:", reply_markup=markup)
-    bot.register_next_step_handler(msg, group)
-
-
-
-def group(message):
-    text = message.text
-    name_dict[str(message.chat.id)].append(text)
-    user_id = message.from_user.id
-    surname = name_dict[str(message.chat.id)][0]
-    name = name_dict[str(message.chat.id)][1]
-    aftername = name_dict[str(message.chat.id)][2]
-    study = name_dict[str(message.chat.id)][3]
-    group = name_dict[str(message.chat.id)][4]
-    if aftername == "Нет отчества":
-        username = surname + " " + name
+    if text == "Нет":
+        msg = bot.send_message(message.chat.id, "Введи свою фамилию имя отчество.")
+        bot.register_next_step_handler(msg, surname)
     else:
-        username = surname + " " + name + " " + aftername
-    user_sql_reg(user_id, username, group, surname, name, aftername, study)
-    bot.send_message(admin(), "Пользователь " + username +" добавлен")
-    name_dict[str(message.chat.id)].clear()
-    markup = button_default()
-    bot.send_message(message.chat.id, "Приятно познакомиться! Теперь ты можешь пользоваться кнопками на телеграм-клавиатуре.", reply_markup=markup)
+        user_reg(str(message.chat.id), name_dict[str(message.chat.id)][0], name_dict[str(message.chat.id)][1], name_dict[str(message.chat.id)][2], name_dict[str(message.chat.id)][3], name_dict[str(message.chat.id)][4], name_dict[str(message.chat.id)][5])
+
+
+        name_dict[str(message.chat.id)].clear()
+        markup = button_default()
+        bot.send_message(message.chat.id, "Приятно познакомиться! Теперь ты можешь пользоваться кнопками на телеграм-клавиатуре.", reply_markup=markup)
+
 
 @bot.message_handler(commands=['menu']) #вывод клавиатуры
 def menu(message):
@@ -176,9 +177,9 @@ def echo(message): #функция ответа на сообщения
     string = message.text
     markup_inl = types.InlineKeyboardMarkup()
     if string == "🔑 Вариант":
-        button1 = types.InlineKeyboardButton("Актуальные варианты", url='https://drive.google.com/file/d/17FIeGJSOMbaHVG1sxeFEaxKIovgdftIJ/view?usp=sharing')
-        markup_inl.add(button1)
-        bot.send_message(message.chat.id, 'Свой вариант можно найти в файле', reply_markup=markup_inl)
+        #button1 = types.InlineKeyboardButton("Актуальные варианты", url='https://drive.google.com/file/d/17FIeGJSOMbaHVG1sxeFEaxKIovgdftIJ/view?usp=sharing')
+        #markup_inl.add(button1)
+        bot.send_message(message.chat.id, var(str(message.chat.id)))
 
     elif string == "📈 Топ":
         button1 = types.InlineKeyboardButton("Рейтинг студентов", url='https://drive.google.com/file/d/17H105tExHL_ZZjmNGhy5yhqfOBsexuvv/view?usp=sharing')
@@ -215,11 +216,11 @@ def echo(message): #функция ответа на сообщения
 import logging
 import sys
 
-print(datetime.now())
+print(datetime.now()) #вывод даты и времени сервера в момент запуска
 
-while True:
+while True: #проверка связи с сервером
     try:
-      bot.polling(none_stop=True, interval=2)
+      bot.polling(none_stop=True, interval=1)
     except:
       print('upalo ' + str(datetime.now()))
       logging.error('error: {}'.format(sys.exc_info()[0]))
