@@ -1,8 +1,7 @@
 from tkinter import *
 from tkinter.messagebox import showinfo, showerror
 from tkinter.ttk import Combobox
-from PIL import Image, ImageTk
-from numpy import cos, sin, tan, arange
+from numpy import cos, sin, tan, arange, linspace
 from math import pi
 from scipy.optimize import root
 import matplotlib
@@ -504,6 +503,350 @@ class Kinem_I(object):
         plot.grid(True)
         plot.show()
 
+class Kinem_II(object):
+
+    def __init__(self, var, ts=1): #процедура инициализации класса
+        self.var = (var//10, var%10)
+        self.ts = ts
+        self.Rad = [(2, 4),(6, 8), (12, 14)]
+
+    def caseDriver(self):
+        ts, var = self.ts, self.var[1]
+
+        driver = [
+            lambda t: 3 * (t ** 2 - 5 * t),
+            lambda t: 9 * t - 4 * t ** 2,
+            lambda t: 7 * t - 4 * t ** 2,
+            lambda t: 3 * (7 * t - 2 * t ** 2),
+            lambda t: 3 * t ** 2 - 7 * t,
+            lambda t: 11 * t - 6 * t ** 2,
+            lambda t: 2 * (t ** 2 - 4),
+            lambda t: 4 * t - t ** 2,
+            lambda t: 2 * (t ** 2 - 3 * t),
+            lambda t: 2 * t ** 2 - 9
+        ]
+
+        start = (2, 3, 2, 4, 5, 1, 5, 3, 2, 1)
+
+        if var in (0, 3, 4, 7, 8, 9):
+            speed = derivative(driver[var], ts)
+            boost = derivative(lambda t: derivative(driver[var], t), ts)
+        elif var in (1, 2, 5, 6):
+            speed = driver[var](ts)
+            boost = derivative(driver[var], ts)
+
+        speedList = [
+            ['4', '1'], ['4', '1'], ['5', '3'],
+            ['B', 'C'], ['A', 'C'], ['B', '5'],
+            ['A', 'C'], ['5', '1'],
+            ['A', '3'], ['4', '2']
+        ]
+
+        boostList = [
+            ['1', 'B', '5'],
+            ['1', 'C', '5'],
+            ['1', 'A', '4'],
+            ['2', 'A', '5'],
+            ['3', 'B', '4'],
+            ['2', 'C', '4'],
+            ['3', 'B', '4'],
+            ['1', 'B', '4'],
+            ['3', 'B', '5'],
+            ['2', 'B', '5']
+        ]
+
+        return start[var], speed, boost, speedList[var], boostList[var]
+
+    def pictDriver(self):
+        (r1, R1), (r2, R2), (r3, R3) = self.Rad
+        var = self.var
+        start, speed, boost, speedList, boostList = self.caseDriver()
+
+        match var[0]:
+            case 0:
+                pict = {
+                    '1': [0, 1, -r2 / r3 * R3 / R1, -R3 / R1, -1 / r1, -1 / R2 * r2 / r3 * R3 / R1],
+                    '2': [0, -R1 / R3 * r3 / r2, 1, r3 / r2, 1 / r1 * R1 / R3 * r3 / r2, 1 / R2],
+                    '3': [0, -R1 / R3, r2 / r3, 1, 1 / r1 * R1 / R3, 1 / R2 * r2 / r3],
+                    '4': [0, -r1, r2 / r3 * R3 / R1 * r1, R3 / R1 * r1, 1, 1 / R2 * r2 / r3 * R3 / R1 * r1],
+                    '5': [0, -R1 / R3 * r3 / r2 * R2, R2, r3 / r2 * R2, 1 / r1 * R1 / R3 * r3 / r2 * R2, 1]
+
+                }
+
+                pictW = {
+                    'A': [pict['1'][start], R1],
+                    'B': [pict['3'][start], r3],
+                    'C': [pict['2'][start], R2]
+                }
+
+            case 1:
+                pict = {
+                    '1': [0, 1, -R2 / R1, -r3 / r2 * R2 / R1, -1 / r1, -1 / R3 * r3 / r2 * R2 / r1],
+                    '2': [0, -R1 / R2, 1, r3 / r2, 1 / r1 * R1 / R2, 1 / R3 * r3 / r2],
+                    '3': [0, -R1 / R2 * r2 / r3, r2 / r3, 1, 1 / r1 * R1 / R2 * r2 / r3],
+                    '4': [0, -r1, R2 / R1 * r1, r3 / r2 * R2 / R1 * r1, 1, 1 / R3 * r3 / r2 * R2 / R1 * r1],
+                    '5': [0, -R1 / R2 * r2 / r3 * R3, r2 / r3 * R3, R3, 1 / r1 * R1 / R2 * r2 / r3 * R3, 1]
+
+                }
+
+                pictW = {
+                    'A': [pict['1'][start], R1],
+                    'B': [pict['2'][start], r2],
+                    'C': [pict['3'][start], R3]
+                }
+
+            case 2:
+                pict = {
+                    '1': [0, 1, -R2 / r3 * R3 / R1, -R3 / R1, 1 / r2 * R2 / r3 * R3 / R1, 1 / r1],
+                    '2': [0, -R1 / R3 * r3 / R2, 1, r3 / R2, -1 / r2, -1 / r1 * R1 / R3 * r3 / R2],
+                    '3': [0, -R1 / R3, R2 / r3, 1, -1 / r2 * R2 / r3, -1 / r1 * R1 / R3],
+                    '4': [0, R1 / R3 * r3 / R2 * r2, -r2, -r3 / R2 * r2, 1, 1 / r1 * R1 / R3 * r3 / R2 * r2],
+                    '5': [0, r1, -R2 / r3 * R3 / R1 * r1, -R3 / R1 * r1, 1 / r2 * R2 / r3 * R3 / R1 * r1, 1]
+
+                }
+
+                pictW = {
+                    'A': [pict['1'][start], r1],
+                    'B': [pict['2'][start], R2],
+                    'C': [pict['3'][start], R3]
+                }
+
+            case 3:
+                pict = {
+                    '1': [0, 1, R2 / R1, -R3 / r1, -1 / r2 * R2 / R1, -1 / r3 * R3 / r1],
+                    '2': [0, R1 / R2, 1, -R3 / r1 * R1 / R2, -1 / r2, -1 / r3 * R3 / r1 * R1 / R2],
+                    '3': [0, -r1 / R3, -R2 / R1 * r1 / R3, 1, 1 / r2 * R2 / R1 * r1 / R3, 1 / r3],
+                    '4': [0, -R1 / R2 * r2, -r2, R3 / r1 * R1 / R2 * r2, 1, 1 / r3 * R3 / r1 * R1 / R2 * r2],
+                    '5': [0, -r1 / R3 * r3, -R2 / R1 * r1 / R3 * r3, r3, 1 / r2 * R2 / R1 * r1 / R3 * r3, 1]
+
+                }
+
+                pictW = {
+                    'A': [pict['1'][start], r1],
+                    'B': [pict['2'][start], R2],
+                    'C': [pict['3'][start], r3]
+                }
+
+            case 4:
+                pict = {
+                    '1': [0, 1, r2 / R1, -R3 / r1, 1 / r3 * R3 / r1, 1 / R2 * r2 / R1],
+                    '2': [0, R1 / r2, 1, -R3 / r1 * R1 / r2, 1 / r3 * R3 / r1 * R1 / r2, 1 / r2],
+                    '3': [0, -r1 / R3, -r2 / R1 * r1 / R3, 1, -1 / r3, -1 / R2 * r2 / R1 * r1 / R3],
+                    '4': [0, r1 / R3 * r3, r2 / R1 * r1 / R3 * r3, -r3, 1 / R2 * r2 / R1 * r1 / R3 * r3],
+                    '5': [0, R1 / r2 * R2, R2, -R3 / r1 * R1 / r2 * R2, 1 / r3 * R3 / r1 * R1 / r2 * R2, 1]
+
+                }
+
+                pictW = {
+                    'A': [pict['1'][start], R1],
+                    'B': [pict['2'][start], R2],
+                    'C': [pict['3'][start], R3]
+                }
+
+            case 5:
+                pict = {
+                    '1': [0, 1, r2 / R1, -R3 / R2 * r2 / R1, 1 / r3 * R3 / R2 * r2 / R1, 1 / r1],
+                    '2': [0, R1 / r2, 1, -R3 / R2, 1 / r3 * R3 / R2, 1 / r1 * R1 / r2],
+                    '3': [0, -R1 / r2 * R2 / R3, -R2 / R3, 1, -1 / r3, -1 / r1 * R1 / r2 * R2 / R3],
+                    '4': [0, R1 / r2 * R2 / R3 * r3, R2 / R3 * r3, -r3, 1, 1 / r1 * R1 / r2 * R2 / R3 * r3],
+                    '5': [0, r1, r2 / R1 * r1, -R3 / R2 * r2 / R1 * r1, 1 / r3 * R3 / R2 * r2 / R1 * r1, 1]
+
+                }
+
+                pictW = {
+                    'A': [pict['1'][start], r1],
+                    'B': [pict['2'][start], r2],
+                    'C': [pict['3'][start], R3]
+                }
+
+            case 6:
+                pict = {
+                    '1': [0, 1, -R2 / R3 * r3 / r1, r3 / r1, -1 / R1, -1 / r2 * R2 / R3 * r3 / r1],
+                    '2': [0, -r1 / r3 * R3 / R2, 1, -R3 / R2, 1 / R1 * r1 / r3 * R3 / R2, 1 / r2],
+                    '3': [0, r1 / r3, -R2 / R3, 1, -1 / R1 * r1 / r3, -1 / r2 * R2 / R3],
+                    '4': [0, -R1, R2 / R3 * r3 / r1 * R1, -r3 / r1 * R1, 1, 1 / r2 * R2 / R3 * r3 / r1 * R1],
+                    '5': [0, -r1 / r3 * R3 / R2 * r2, r2, -R3 / R2 * r2, 1 / R1 * r1 / r3 * R3 / R2 * r1, 1]
+
+                }
+
+                pictW = {
+                    'A': [pict['1'][start], r1],
+                    'B': [pict['3'][start], R3],
+                    'C': [pict['2'][start], r2]
+                }
+
+            case 7:
+                pict = {
+                    '1': [0, 1, -R2 / r1, -R3 / r2 * R2 / r1, -1 / R1, -1 / r3 * R3 / r2 * R2 / r1],
+                    '2': [0, -r1 / R2, 1, R3 / r2, -1 / R1 * r1 / R2, 1 / r3 * R3 / r2],
+                    '3': [0, -r1 / R2 * r2 / R3, r2 / R3, 1, 1 / R1 * r1 / R2 * r2 / R3, 1 / r3],
+                    '4': [0, -R1, R2 / r1 * R1, R3 / r2 * R2 / r1 * R1, 1, 1 / r3 * R3 / r2 * R2 / r1 * R1],
+                    '5': [0, -r1 / R2 * r2 / R3 * r3, r2 / R3 * r3, r3, 1 / R1 * r1 / R2 * r2 / R3 * r3, 1]
+
+                }
+
+                pictW = {
+                    'A': [pict['1'][start], R1],
+                    'B': [pict['2'][start], R2],
+                    'C': [pict['3'][start], R3]
+                }
+
+            case 8:
+                pict = {
+                    '1': [0, 1, r2 / r1, -R3 / R1, -1 / R2 * r2 / r1, -1 / r3 * R3 / R1],
+                    '2': [0, r1 / r2, 1, -R3 / R1 * r1 / r2, -1 / R2, -1 / r3 * R3 / R1 * r1 / r2],
+                    '3': [0, -R1 / R3, -r2 / r1 * R1 / R3, 1, 1 / R2 * r2 / r1 * R1 / R3, 1 / r3],
+                    '4': [0, -r1 / r2 * R2, -R2, R3 / R1 * r1 / r2 * R2, 1, 1 / r3 * R3 / R1 * r1 / r2 * R2],
+                    '5': [0, -R1 / R3 * r3, -r2 / r1 * R1 / R3 * r3, r3, 1 / R2 * r2 / r1 * R1 / R3 * r3, 1]
+
+                }
+
+                pictW = {
+                    'A': [pict['1'][start], R1],
+                    'B': [pict['2'][start], r2],
+                    'C': [pict['3'][start], r3]
+                }
+
+            case 9:
+                pict = {
+                    '1': [0, 1, -R2 / R1, -R3 / r2 * R2 / R1, -1 / r1, -1 / r3 * R3 / r2 * R2 / R1],
+                    '2': [0, -R1 / R2, 1, R3 / r2, 1 / r1 * R1 / R2, 1 / r3 * R3 / r2],
+                    '3': [0, -R1 / R2 * r2 / R3, r2 / R3, 1, 1 / r1 * R1 / R2 * r2 / R3, 1 / r3],
+                    '4': [0, -r1, R2 / R1 * r1, R3 / r2 * R2 / R1 * r1, 1, 1 / r3 * R3 / r2 * R2 / R1 * r1],
+                    '5': [0, -R1 / R2 * r2 / R3 * r3, r2 / R3 * r3, r3, 1 / r1 * R1 / R2 * r2 / R3 * r3, 1]
+
+                }
+
+                pictW = {
+                    'A': [pict['3'][start], R3],
+                    'B': [pict['1'][start], R1],
+                    'C': [pict['2'][start], r2]
+                }
+
+        speedPrint = []
+        boostPrint = []
+
+        signSpeed = lambda l: 'ω' if l in ('1', '2', '3') else 'v'
+        signBoost = lambda l: 'ε' if l in ('1', '2', '3') else 'a'
+
+        for sp in speedList:
+            if sp in ('A', 'B', 'C'):
+                speedTire = speed * pictW[sp][0] * pictW[sp][1]
+            else:
+                speedTire = speed * pict[sp][start]
+
+            speedPrint.append(f'{signSpeed(sp)}_{sp} = {round(speedTire, 2)}')
+
+        for bo in boostList:
+            if bo in ('A', 'B', 'C'):
+                boostTire = (speed * pictW[bo][0]) ** 2 * abs(pictW[bo][1])
+                boostPrint.append(f'{signBoost(bo)}_{bo}_n = {round(boostTire, 2)}')
+                boostTire = boost * abs(pictW[bo][0])
+                boostPrint.append(f'{signBoost(bo)}_{bo}_𝜏 = {round(boostTire, 2)}')
+            else:
+                boostTire = boost * abs(pict[bo][start])
+                boostPrint.append(f'{signBoost(bo)}_{bo} = {round(boostTire, 2)}')
+
+        return speedPrint, boostPrint
+
+    def printCase(self):
+        speed, boost = self.pictDriver()
+        vs = ', '.join(f'{vs} см/с' for vs in speed)
+        bs = ''.join(f'{vs} см/с^2,\n' for vs in boost)
+        fs = f'Значения скоростей: \n{vs}.\nЗначения ускорений \n{bs}'
+        return fs
+
+    def plotTk(self, plt):
+        (r1, R1), (r2, R2), (r3, R3) = self.Rad
+        v = self.var[0]
+
+        def circ(plt, radius, x):
+            theta = linspace(0, 2 * pi, 150)
+
+            a = radius * cos(theta) + x
+            b = radius * sin(theta)
+
+            return plt.plot(a, b, color='blue', alpha=.6)
+
+        plt.axis([0, 68, -25, 25])
+
+        axer = [
+            [0, 1.5 * R1, 2.5 * R1 + 3. * R3, 2.5 * R1 + R3],
+            [0, 1.5 * R1, 2.5 * R1 + R2, 2.5 * R1 + 3 * R3],
+            [0, 1.5 * r2 + 3.5 * R3 + R1, 1.5 * r2, 1.5 * r2 + 2.5 * R3],
+            [0, 3 * R2 + R1, R2, 3 * R2 + R1 + r1 + R3],
+            [0, 2 * R3 + r1, 2 * R3 + r1 + 3 * R2, R3],
+            [0, 2 * R3 + 3 * R2 + R1, 2 * R3 + R2, R3],
+            [0, 1.5 * R1, 2.5 * R1 + 2 * r3 + R3 + R2, 2.5 * R1 + 2 * r3],
+            [0, 1.5 * R1, 2.5 * R1 + R2, 2.5 * R1 + 3 * R2 + R3],
+            [0, 3.5 * R2 + R1, 1.5 * R2, 3.5 * R2 + 2 * R1 + R3],
+            [0, 1.5 * R1, 2.5 * R1 + R2, 2.5 * R1 + 3 * R2 + R3]
+
+        ]
+
+        sopr = [
+            [(axer[v][2], axer[v][3]), (r2, r3), (-r2, -r3)],
+            [(axer[v][2], axer[v][3]), (r2, r3), (-r2, -r3)],
+            [(axer[v][2], axer[v][3]), (R2, r3), (-R2, -r3)],
+            [(axer[v][1], axer[v][2]), (R1, R2), (-R1, -R2)],
+            [(axer[v][1], axer[v][2]), (R1, r2), (-R1, -r2)],
+            [(axer[v][1], axer[v][2]), (R1, r2), (-R1, -r2)],
+            [(axer[v][1], axer[v][3]), (r1, r3), (-r1, -r3)],
+            [(axer[v][2], axer[v][3]), (r2, R3), (-r2, -R3)],
+            [(axer[v][1], axer[v][2]), (r1, r2), (-r1, -r2)],
+            [(axer[v][2], axer[v][3]), (r2, R3), (-r2, -R3)]
+        ]
+
+        detal = [
+            [(axer[v][1] - r1, axer[v][1] - r1), (axer[v][2] + R2, axer[v][2] + R2), (axer[v][2] + R2 - 2.5, -r3)],
+            [(axer[v][1] - r1, axer[v][1] - r1), (axer[v][3] + R3, axer[v][3] + R3), (axer[v][3] + R3 - 2.5, -r3)],
+            [(axer[v][2] - r2, axer[v][2] - r2), (axer[v][1] + r1, axer[v][1] + r1), (axer[v][1] + r1 - 2.5, -r3)],
+            [(axer[v][2] - r2, axer[v][2] - r2), (axer[v][3] + r3, axer[v][3] + r3), (axer[v][3] + r3 - 2.5, -r3)],
+            [(axer[v][3] - r3, axer[v][3] - r3), (axer[v][2] + R2, axer[v][2] + R2), (axer[v][2] + R2 - 2.5, -r3)],
+            [(axer[v][3] - r3, axer[v][3] - r3), (axer[v][1] + r1, axer[v][1] + r1), (axer[v][1] + r1 - 2.5, -r3)],
+            [(axer[v][1] - R1, axer[v][1] - R1), (axer[v][2] + r2, axer[v][2] + r2), (axer[v][2] + r2 - 2.5, -r3)],
+            [(axer[v][1] - R1, axer[v][1] - R1), (axer[v][3] + r3, axer[v][3] + r3), (axer[v][3] + r3 - 2.5, -r3)],
+            [(axer[v][2] - R2, axer[v][2] - R2), (axer[v][3] + r3, axer[v][3] + r3), (axer[v][3] + r3 - 2.5, -r3)],
+            [(axer[v][1] - r1, axer[v][1] - r1), (axer[v][3] + r3, axer[v][3] + r3), (axer[v][3] + r3 - 2.5, -r3)]
+        ]
+
+        plt.text(axer[v][1], 0, '1', fontsize=10)
+        plt.text(axer[v][2], 0, '2', fontsize=10)
+        plt.text(axer[v][3], 0, '3', fontsize=10)
+        plt.text(detal[v][0][0], r2, '4', fontsize=10)
+        plt.text(detal[v][1][0], -r3 - 2.5, '5', fontsize=10)
+
+        circ(plt, r1, axer[v][1])
+        circ(plt, R1, axer[v][1])
+        circ(plt, r2, axer[v][2])
+        circ(plt, R2, axer[v][2])
+        circ(plt, r3, axer[v][3])
+        circ(plt, R3, axer[v][3])
+
+        plt.plot(sopr[v][0], sopr[v][1], color='blue', alpha=.5)
+        plt.plot(sopr[v][0], sopr[v][2], color='blue', alpha=.5)
+
+        plt.plot(detal[v][0], (r2, -r2), lw=3, color='blue', alpha=.6)
+        plt.plot(detal[v][1], (0, -r3), color='blue', alpha=.5)
+        self.detal = detal[v][2]
+
+
+    def plotMath(self):
+        self.plotTk(plot)
+        rectangle = plot.Rectangle(self.detal, 5, -5, color='blue', alpha=.6)
+        plot.gca().add_patch(rectangle)
+        plot.subplot(1, 1, 1)
+        plot.grid(False)
+        plot.show()
+
+
+
+
+TerMex = {
+    "Динамика Д1": Dynam_I,
+    "Кинематика К1": Kinem_I,
+    "Кинематика К2": Kinem_II
+}
 
 
 def graph(var, task):
@@ -511,62 +854,43 @@ def graph(var, task):
     plt = figure.add_subplot(1, 1, 1)
     figCanv = FigureCanvasTkAgg(figure, dt)
     figCanv.get_tk_widget().place(x=350, y=5)
-    match task:
-        case "Динамика Д1" : Dynam_I(var=var).plotTk(plt)
-        case "Кинематика К1": Kinem_I(var=var).plotTk(plt)
-
+    try:
+        TerMex[task](var=var).plotTk(plt)
+    except IndexError:
+        showerror(title='Ошибка', message=f'Варианта не существует!')
 
 
 def click():
     global text_case, num_1, num_2, tasks
     varNum = int(num_1.get() + num_2.get())
-    match tasks.get():
-        case "Динамика Д1":
-            if varNum > 0 and varNum <= 30:
-                text = Dynam_I(var=varNum).printCase()
-                canvas.delete(text_case)
-                text_case = canvas.create_text(row[1], line[4], anchor='nw', font=("Arial", font_text), text=text, fill="Black")
-                graph(varNum, tasks.get())
-            else:
-                showerror(title='Ошибка', message='Варианта не существует!')
-
-        case "Кинематика К1":
-            text = Kinem_I(var=varNum).printCase()
-            canvas.delete(text_case)
-            text_case = canvas.create_text(row[1], line[4], anchor='nw', font=("Arial", font_text), text=text, fill="Black")
-            graph(varNum, tasks.get())
+    try:
+        text = TerMex[tasks.get()](var=varNum).printCase()
+        canvas.delete(text_case)
+        text_case = canvas.create_text(row[1], line[4], anchor='nw', font=("Arial", font_text), text=text, fill="Black")
+        graph(varNum, tasks.get())
+    except IndexError:
+        showerror(title='Ошибка', message=f'Варианта не существует!')
 
 
 def clicGraph():
     global text_case, num_1, num_2, tasks
     varNum = int(num_1.get() + num_2.get())
-    match tasks.get():
-        case "Динамика Д1":
-            if varNum > 0 and varNum <= 30:
-                Dynam_I(var=varNum).plotMath()
-            else:
-                showerror(title='Ошибка', message='Варианта не существует!')
-
-        case "Кинематика К1":
-            Kinem_I(var=varNum).plotMath()
-
+    try:
+        TerMex[tasks.get()](var=varNum).plotMath()
+    except IndexError:
+        showerror(title='Ошибка', message=f'Варианта не существует!')
 
 def clickCopy():
     global dt, tasks, num_1, num_2
     varNum = int(num_1.get() + num_2.get())
     try:
-        match tasks.get():
-            case "Динамика Д1":
-                if varNum <= 30 and varNum > 0:
-                    text = Dynam_I(var=varNum).printCase()
-            case "Кинематика К1":
-                text = Kinem_I(var=varNum).printCase()
-
+        text = TerMex[tasks.get()](var=varNum).printCase()
         dt.clipboard_clear()
         dt.clipboard_append(text)
         showinfo(title='Решение', message='Результат расчёта успешно скопирован!')
-    except:
-        showerror(title='Ошибка', message='Проведите расчёт!')
+    except IndexError:
+        showerror(title='Ошибка', message=f'Варианта не существует!')
+
 
 dt = Tk()
 
@@ -603,7 +927,7 @@ button = Button(text="Вычислить", height=1, width=10, font=("Arial", fo
 butPrint = Button(text="Печать графика", height=1, width=12, font=("Arial", font_text), command=clicGraph)
 butCopy = Button(text="Решение в буфер", height=1, width=13, font=("Arial", font_text), command=clickCopy)
 
-tasks['values'] = ("Кинематика К1", "Динамика Д1")
+tasks['values'] = ("Кинематика К1", "Кинематика К2", "Динамика Д1")
 tasks.current(1)
 tasks["background"] = '#ff0000'
 
