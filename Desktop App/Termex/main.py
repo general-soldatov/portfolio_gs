@@ -840,12 +840,225 @@ class Kinem_II(object):
         plot.show()
 
 
+class Stat_I(object):
+
+    def __init__(self, var):
+        self.var = (var // 10, var % 10)
+
+    def initCond(self):
+        ls = [2, 3, 2, 1, 3, 2, 1, 2, 3, 2]
+        forcer = {
+            'K': [20, 10, 0, 0, 40, 30, 0, 0, 20, 30],
+            'D': [40, 30, 0, 10, 20, 0, 0, 10, 0, 0],
+            'H': [0, 0, 20, 0, 0, 10, 40, 30, 0, 0],
+            'E': [0, 0, 40, 30, 0, 0, 20, 0, 40, 10]
+        }
+
+        corners = {
+            'K': [210, 30, 0, 0, 300, 150, 0, 0, 225, 120],
+            'D': [330, 135, 0, 45, 240, 0, 0, 45, 0, 0],
+            'H': [0, 0, 240, 0, 0, 60, 330, 135, 0, 0],
+            'E': [0, 0, 315, 120, 0, 0, 210, 0, 315, 60]
+        }
+
+        var = self.var
+        rad = lambda x: x * pi / 180
+        l = ls[var[1]]
+        M = 5 if var[0] > 5 else -5
+
+        force, corner = {}, {}
+
+        for key, value in forcer.items():
+            force[key] = value[var[1]]
+            corner[key] = rad(corners[key][var[1]])
+
+        return M, l, force, corner
+
+    def drafter(self):
+        M, l, force, corner = self.initCond()
+
+        BS = [
+            (4 * l, -4 * l), (2 * l, 4 * l), (-4 * l, -2 * l), (4 * l, -5 * l),
+            (-4 * l, -2 * l), (l, -4 * l), 0, 0, 0, 0
+        ]
+
+        worder = {
+            'K': [(3 * l, -l), (4 * l, l), (-4 * l, 2 * l), (3 * l, -3 * l), (-l, 2 * l),
+                  (-4 * l, 0), (3 * l, 4 * l), (3 * l, -3 * l), (-l, 3 * l), (4 * l, l)],
+            'D': [(3 * l, 0), (3 * l, 0), (-2 * l, 2 * l), (0, -3 * l), (-4 * l, l),
+                  (-4 * l, -4 * l), (0, 3 * l), (0, -3 * l), (-l, 4 * l), (3 * l, 0)],
+            'H': [(3 * l, -4 * l), (3 * l, 4 * l), (-4 * l, 0), (4 * l, -4 * l), (0, l),
+                  (-2 * l, -4 * l), (4 * l, 3 * l), (4 * l, -4 * l), (-l, 0), (3 * l, 4 * l)],
+            'E': [(2 * l, 0), (l, 0), (0, l), (4 * l, -4 * l), (0, 2 * l), (-2 * l, 0),
+                  (4 * l, 4 * l), (0, -l), (-2 * l, 4 * l), (l, 0)],
+        }
+
+        draftWord = {}
+        for keys, value in worder.items():
+            draftWord[keys] = [value[self.var[0]]]
+
+        for key in draftWord:
+            draftWord[key].append(
+                (draftWord[key][0][0] + 0.025 * l * force[key] * cos(corner[key]),
+                 draftWord[key][0][1] + 0.025 * l * force[key] * sin(corner[key]))
+            )
+
+        return draftWord, BS[self.var[0]]
+
+    def caser(self):
+        M, l, force, corner = self.initCond()
+        draftWord, B = self.drafter()
+        forceX, forceY, shoulderX, shoulderY = {}, {}, {}, {}
+        caseX, caseY, torqueA = 0, 0, 0
+
+        for keyF, value in force.items():
+            forceX[keyF] = value * cos(corner[keyF])
+            forceY[keyF] = value * sin(corner[keyF])
+            shoulderX[keyF] = draftWord[keyF][0][0]
+            shoulderY[keyF] = draftWord[keyF][0][1]
+            caseX += forceX[keyF]
+            caseY += forceY[keyF]
+            torqueA += forceY[keyF] * shoulderX[keyF]
+            torqueA += forceX[keyF] * shoulderY[keyF]
+
+        def equations(vars):
+            if self.var[0] in (0, 1, 5):
+                xA, yA, yB = vars
+                eq1 = xA + caseX
+                eq2 = yA + yB + caseY
+                eq3 = yB * B[0] + torqueA + M
+            elif self.var[0] in (2, 3, 4):
+                xA, yA, xB = vars
+                eq1 = xA + xB + caseX
+                eq2 = yA + caseY
+                eq3 = xB * B[1] + torqueA + M
+            else:
+                xA, yA, mA = vars
+                eq1 = xA + caseX
+                eq2 = yA + caseY
+                eq3 = mA + torqueA + M
+
+            return [eq1, eq2, eq3]
+
+        initial_guess = [0, 0, 0]
+        result = root(equations, initial_guess)
+
+        if self.var[0] in (0, 1, 5):
+            text = f'x_A = {round(result.x[0],2)} Н, y_A = {round(result.x[1],2)} Н, y_B = {round(result.x[2],2)} Н'
+        elif self.var[0] in (2, 3, 4):
+            text = f'x_A = {round(result.x[0],2)} Н, y_A = {round(result.x[1], 2)} Н, x_B = {round(result.x[2],2)} Н'
+        else:
+            text = f'x_A = {round(result.x[0],2)} Н, y_A = {round(result.x[1], 2)} Н, m_A = {round(result.x[2],2)} Н*м'
+
+        return text
+
+    def printCase(self):
+        M, l, force, corner = self.initCond()
+        text = ''.join(f'F_{key} = {f} Н, ' if f > 0 else '' for key, f in force.items())
+        ugol = ''.join(f'α_{key} = {round(f, 2)} рад, ' if f > 0 else '' for key, f in corner.items())
+        text = f'''Решение:
+Условие: на конструкцию действуют силы: \n{text}с углами:
+{ugol}
+Момент M = {M} Н*м, длина l = {l} м
+Реакции в узлах: \n{self.caser()}'''
+        return text
+
+    def plotTk(self, plt):
+        #global l, force, corner, var
+        M, l, force, corner = self.initCond()
+        draftWord, B = self.drafter()
+
+        def circ(plt, x, y):
+            theta = linspace(0, 2 * pi, 150)
+            radius = 0.05 * l
+            a = radius * cos(theta) + x
+            b = radius * sin(theta) + y
+            return plt.plot(a, b, color='blue')
+
+        def sharnStat(plt, x, y, i=True, j=True, types=True):
+            circ(plt, x, y)
+            a = [0.2 * l, -0.2 * l]
+            b = [-abs(bs) for bs in a] if i else [abs(bs) for bs in a]
+            b = b if types else [0 for bs in b]
+            a, b = (a, b) if j else (b, a)
+            if types:
+                plt.plot((x, x + a[0]), (y, y + b[0]), color='blue')
+                plt.plot((x, x + a[1]), (y, y + b[1]), color='blue')
+                plt.plot((x + a[0], x + a[1]), (y + b[0], y + b[1]), lw=4, color='blue')
+            else:
+                plt.plot((x + a[0], x + a[1]), (y + b[0], y + b[1]), lw=4, color='blue')
+
+        def sharnDrive(plt, x, y, i=True, j=True, types=True):
+            a = [-0.2 * l, 0.2 * l, -0.2 * l, 0.2 * l, 0.25 * l, -0.25 * l, 0]
+            b = [-0.2 * l, -0.2 * l, -0.3 * l, -0.3 * l, -0.4 * l, -0.4 * l, -0.4 * l]
+            b = b if i else [-bs for bs in b]
+            a, b = (a, b) if j else (b, a)
+            if types:
+                circ(plt, x, y)
+                plt.plot((x, x + a[0]), (y, y + b[0]), color='blue')
+                plt.plot((x, x + a[1]), (y, y + b[1]), color='blue')
+                plt.plot((x + a[0], x + a[1]), (y + b[0], y + b[1]), lw=4, color='blue')
+                circ(plt, x + a[2], y + b[2])
+                circ(plt, x + a[3], y + b[3])
+            else:
+                plt.plot((x, x + a[6]), (y, y + b[6]), lw=0.5, color='blue')
+            plt.plot((x + a[4], x + a[5]), (y + b[4], y + b[5]), lw=4, color='blue')
+
+        draft = [
+            [(0, 3 * l, 0, 0), (3 * l, 3 * l, 0, -4 * l), (3 * l, 4 * l, -4 * l, -4 * l)],
+            [(0, 4 * l, 0, 0), (4 * l, 4 * l, 0, 4 * l), (2 * l, 4 * l, 4 * l, 4 * l)],
+            [(0, 0, 0, 2 * l), (-4 * l, 0, 2 * l, 2 * l), (-4 * l, -4 * l, 2 * l, -2 * l)],
+            [(0, 0, 0, -3 * l), (0, 4 * l, -3 * l, -3 * l), (4 * l, 4 * l, -3 * l, -5 * l)],
+            [(0, 0, 0, 2 * l), (0, -4 * l, 2 * l, 2 * l), (-4 * l, -4 * l, 2 * l, -2 * l)],
+            [(0, -4 * l, 0, 0), (-4 * l, -4 * l, 0, -4 * l), (-4 * l, l, -4 * l, -4 * l)],
+            [(0, 0, 0, 4 * l), (0, 4 * l, 4 * l, 4 * l), (4 * l, 4 * l, 4 * l, 2 * l)],
+            [(0, 0, 0, -3 * l), (0, 4 * l, -3 * l, -3 * l), (4 * l, 4 * l, -3 * l, -5 * l)],
+            [(0, -l, 0, 0), (-l, -l, 0, 4 * l), (-4 * l, -l, 4 * l, 4 * l)],
+            [(0, 4 * l, 0, 0), (4 * l, 4 * l, 0, 4 * l), (2 * l, 4 * l, 4 * l, 4 * l)]
+        ]
+
+        statDict = [
+            (True, True, True), (True, True, True), (True, True, True),
+            (False, False, True), (True, True, True), (True, True, True),
+            (True, True, False), (True, True, False),
+            (True, False, False), (True, False, False),
+        ]
+
+        driveDict = [
+            (False, True, True), (True, True, True), (False, False, True),
+            (True, False, False), (False, False, False),
+            (True, True, False), False, False, False, False
+        ]
+
+        st = statDict[self.var[0]]
+        dr = driveDict[self.var[0]]
+
+        draft = draft[self.var[0]]
+        sharnStat(plt, 0, 0, i=st[0], j=st[1], types=st[2])
+
+        if st[2]: sharnDrive(plt, B[0], B[1], i=dr[0], j=dr[1], types=dr[2])
+
+        for a, b, c, d in draft:
+            plt.plot((a, b), (c, d), lw=2, color='blue')
+
+        for key, value in draftWord.items():
+            if force[key] > 0:
+                plt.annotate(r'$F_%s$' % key, xy=value[0], xytext=value[1],
+                             arrowprops=dict(arrowstyle="<-", color='red'))
+
+    def plotMath(self):
+        self.plotTk(plot)
+        plot.subplot(1, 1, 1)
+        plot.grid(False)
+        plot.show()
+
 
 
 TerMex = {
     "Динамика Д1": Dynam_I,
     "Кинематика К1": Kinem_I,
-    "Кинематика К2": Kinem_II
+    "Кинематика К2": Kinem_II,
+    "Статика С1": Stat_I
 }
 
 
@@ -927,8 +1140,8 @@ button = Button(text="Вычислить", height=1, width=10, font=("Arial", fo
 butPrint = Button(text="Печать графика", height=1, width=12, font=("Arial", font_text), command=clicGraph)
 butCopy = Button(text="Решение в буфер", height=1, width=13, font=("Arial", font_text), command=clickCopy)
 
-tasks['values'] = ("Кинематика К1", "Кинематика К2", "Динамика Д1")
-tasks.current(1)
+tasks['values'] = ("Статика С1", "Кинематика К1", "Кинематика К2", "Динамика Д1")
+tasks.current(0)
 tasks["background"] = '#ff0000'
 
 graph(1,  tasks.get())
