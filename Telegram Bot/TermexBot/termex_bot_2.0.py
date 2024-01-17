@@ -3,6 +3,7 @@ import sys
 import telebot
 from telebot import types # для указания типов
 import time
+import gspread
 import pandas as pd
 from datetime import datetime
 from telefunc import tel_token, sql_base_read_, admin
@@ -28,47 +29,60 @@ butAdmin = (
     "❌ Выход"
 )
 
-class BaseData():
 
-    def user_sql(user_id):  # регистрация пользователя в списке рассылок
-        with sql_base_read_() as connection:
-            show_db_query = "INSERT INTO teldata (user_id, active) VALUES (%s, %s)"
-            data_tg = [(user_id, 1)]
-            with connection.cursor() as cursor:
-                cursor.executemany(show_db_query, data_tg)
-                connection.commit()
-                print(connection, "id append")
+def user_sql(user_id): #регистрация пользователя в списке рассылок
+    with sql_base_read_() as connection:
+        print(connection)
+        show_db_query = "INSERT INTO teldata (user_id, active) VALUES (%s, %s)"
+        data_tg = [(user_id, 1)]
+        with connection.cursor() as cursor:
+            cursor.executemany(show_db_query, data_tg)
+            connection.commit()
+            print("id append")
 
-    def user_reg(user_id, name, profile, name_group, section, variant,
-                 variant_D1):  # регистрация студента в базе данных
-        with sql_base_read_() as connection:
-            show_db_query = "INSERT INTO data_user (user_id, name, profile, name_group, section, variant, variant_D1) VALUES (%s, %s, %s, %s, %s, %s, %s)"
-            data_tg = [(user_id, name, profile, name_group, section, variant, variant_D1)]
-            with connection.cursor() as cursor:
-                cursor.executemany(show_db_query, data_tg)
-                connection.commit()
-                print("user registered")
+def user_select(message):  # подпрограмма рассылки пользователям сообщений
+    with sql_base_read_() as connection:
+        print(connection)
+        show_select = "SELECT user_id FROM data_user"
+        with connection.cursor() as cursor:
+            cursor.execute(show_select)
+            for result in cursor.fetchall():
+                bot.copy_message(chat_id = result, from_chat_id=message.chat.id, message_id=message.message_id)
 
-    def user_select(message):  # подпрограмма рассылки пользователям сообщений
+def user_sql_reg(user_id, username, group, surname, name, aftername, study): #регистрация студента в базе данных
+    with sql_base_read_() as connection:
+        print(connection)
+        show_db_query = "INSERT INTO namedata (user_id, user_name, user_group, syrname, name, aftername, study) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        data_tg = [(user_id, username, group, surname, name, aftername, study)]
+        with connection.cursor() as cursor:
+            cursor.executemany(show_db_query, data_tg)
+            connection.commit()
+            print("user registered")
+
+def user_reg(user_id, name, profile, name_group, section, variant, variant_D1): #регистрация студента в базе данных
+    with sql_base_read_() as connection:
+        #print(connection)
+        show_db_query = "INSERT INTO data_user (user_id, name, profile, name_group, section, variant, variant_D1) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        data_tg = [(user_id, name, profile, name_group, section, variant, variant_D1)]
+        with connection.cursor() as cursor:
+            cursor.executemany(show_db_query, data_tg)
+            connection.commit()
+            print("user registered")
+
+def var(user_id):
+    try:
         with sql_base_read_() as connection:
-            show_select = "SELECT user_id FROM data_user"
+            #print(connection)
+            show_select = f"SELECT name, variant, variant_D1 FROM data_user WHERE user_id = {user_id}"
             with connection.cursor() as cursor:
                 cursor.execute(show_select)
-                for result in cursor.fetchall():
-                    bot.copy_message(chat_id=result, from_chat_id=message.chat.id, message_id=message.message_id)
+                res = cursor.fetchall()
+                text = f'Обучающийся {res[0][0]}: \nВариант №{res[0][1]}, для Д1 №{res[0][2]}'
+                return text
 
-    def var(user_id):
-        try:
-            with sql_base_read_() as connection:
-                show_select = f"SELECT name, variant, variant_D1 FROM data_user WHERE user_id = {user_id}"
-                with connection.cursor() as cursor:
-                    cursor.execute(show_select)
-                    res = cursor.fetchall()
-                    text = f'Обучающийся {res[0][0]}: \nВариант №{res[0][1]}, для Д1 №{res[0][2]}'
-                    return text
+    except:
+        return "Вариант не найден"
 
-        except:
-            return "Вариант не найден"
 
 class ComandBot(object):
 
@@ -79,8 +93,7 @@ class ComandBot(object):
     def welcome(self):
         msg = bot.reply_to(self.message,
                            "Приветствую! Я твой телеграм-помощник в области теоретической механики. Давайте познакомимся, напиши свою фамилию имя отчество:")
-        BaseData().user_sql(self.message.from_user.id)
-        bot.register_next_step_handler(msg, self.name_search())
+        user_sql(self.message.from_user.id)
         name_dict.update({str(self.message.chat.id): []})
         return msg
 
@@ -115,7 +128,7 @@ class ComandBot(object):
         return markup
 
     def app_user(self):
-        BaseData().user_reg(str(self.message.chat.id), name_dict[str(self.message.chat.id)][0], name_dict[str(self.message.chat.id)][1],
+        user_reg(str(self.message.chat.id), name_dict[str(self.message.chat.id)][0], name_dict[str(self.message.chat.id)][1],
                  name_dict[str(self.message.chat.id)][2], name_dict[str(self.message.chat.id)][3],
                  name_dict[str(self.message.chat.id)][4], name_dict[str(self.message.chat.id)][5])
         bot.send_message(admin(),
@@ -135,14 +148,14 @@ class ComandBot(object):
 
     def help_bot(self):
         HELP = """
-        Привет! Я твой робот-помощник в освоении предмета "Теоретическая механика".
-        В меню встроенной клавиатуры ты можешь найти пособия для самостоятельной работы, учебник.
-        Также возможно найти свой вариант, студенческий рейтинг, расписание преподавателя.
-        Список доступных команд:
-        /help - вывести справку по чат-боту
-        /menu - вызов встроенной клавиатуры
-        /mic - расшифровка голосовых сообщений
-        Разработчик © Юрий Солдатов
+Привет! Я твой робот-помощник в освоении предмета "Теоретическая механика".
+В меню встроенной клавиатуры ты можешь найти пособия для самостоятельной работы, учебник.
+Также возможно найти свой вариант, студенческий рейтинг, расписание преподавателя.
+Список доступных команд:
+/help - вывести справку по чат-боту
+/menu - вызов встроенной клавиатуры
+/mic - расшифровка голосовых сообщений
+Разработчик © Юрий Солдатов
         """
         bot.send_message(self.message.chat.id, HELP)
 
@@ -212,22 +225,23 @@ varTask = {}
 @bot.message_handler(commands=['start']) # функция начала работы бота с регистрацией студента в БД
 def send_welcome(message): #функция на команды
 	msg = ComandBot(message).welcome()
-	bot.register_next_step_handler(msg, names)
+	bot.register_next_step_handler(msg, namered)
 
-def names(message):
+
+def namered(message):
     try:
         msg = ComandBot(message).name_search()
         bot.register_next_step_handler(msg, appUser)
     except Exception as e:
         msg = bot.send_message(message.chat.id, "Проверьте правильность ввода данных.")
-        bot.register_next_step_handler(msg, names)
+        bot.register_next_step_handler(msg, namered)
         print(e)
 
 def appUser(message):
     text = message.text
     if text == "Нет":
         msg = bot.send_message(message.chat.id, "Введи свою фамилию имя отчество.")
-        bot.register_next_step_handler(msg, names)
+        bot.register_next_step_handler(msg, namered)
     else:
         ComandBot(message).app_user()
 
@@ -281,7 +295,7 @@ def contPrep(message): ButtonBot(message).contact()
 
 @bot.message_handler(func=lambda m: m.text == "🔑 Вариант")
 def varez(message):
-    bot.send_message(message.chat.id, BaseData.var(str(message.chat.id)))
+    bot.send_message(message.chat.id, var(str(message.chat.id)))
 
 @bot.message_handler(func=lambda m: (m.text == "📩 Рассылка" and m.chat.id == admin()))
 def sendall(message):
@@ -289,7 +303,7 @@ def sendall(message):
     bot.register_next_step_handler(msg, mailer)
 
 def mailer(message):
-    BaseData().user_select(message)
+    user_select(message)
 
 @bot.message_handler(func=lambda m: (m.text == "🗂 Список пользователей" and m.chat.id == admin()))
 def listUser(message):
@@ -303,11 +317,30 @@ def listUser(message):
 
 @bot.message_handler(func=lambda m: (m.text == "📲 Отправить контингент" and m.chat.id == admin()))
 def readStud(message):
-    msg = bot.send_message(message.chat.id, "Прикрепите файл")
-    bot.register_next_step_handler(msg, fileOpen)
+    bot.send_message(message.chat.id, "Загружен процесс выгрузки данных из базы данных. Пожалуйста подождите.")
+    bot.send_message(message.chat.id, "⌛️")
+    gc = gspread.service_account(filename='termex-bot-0ea77baf201b.json') # Указываем путь к JSON
+    sh = gc.open("Термех 2/2024") #Открываем тестовую таблицу
+    worksheet = sh.worksheet("termex_bot")
+    try:
+        with sql_base_read_() as connection:
+            show_select = "SELECT ROW_NUMBER() OVER(ORDER BY name), id, user_id, name, variant, variant_D1 FROM data_user"
+            with connection.cursor() as cursor:
+                cursor.execute(show_select)
+                headerTab = ["№", 'base_id', 'user_id', 'name', 'variant', 'variant_D1']
+                for ht in range(len(headerTab)):
+                    worksheet.update_cell(1, ht+1, headerTab[ht])
 
-def fileOpen(message):
-    bot.send_message(message.chat.id, "Файл прикреплён")
+                for res in cursor.fetchall():
+                    for its in range(6):
+                        worksheet.update_cell(int(res[0]+1), its+1, res[its])
+                        time.sleep(1)
+
+        bot.send_message(message.chat.id, "Процесс обновления данных завершён")
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Произошла ошибка {e}")
+
 
 @bot.message_handler(func=lambda m: (m.text == "❌ Выход" and m.chat.id == admin()))
 def exitBot(message):
