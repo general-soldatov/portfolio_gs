@@ -2,7 +2,7 @@ from random import uniform
 from math import cos, sin, pi, atan
 rad = lambda alpha: alpha * pi / 180
 
-def task_9() -> str | float | str:
+def task_1() -> str | float | str:
     URL = True
     n = round(uniform(2.1, 500.1), 1)
     F1 = round(uniform(2.1, 500.1), 1)
