@@ -13,7 +13,7 @@ def task_1() -> str | float | str:
 F1 = {F1} Н, F2 = {F2} Н, F3 = {F3} Н, ​α = {alpha}°.
 Модуль R, Н округлить до десятых.
     '''
-    result = F2 + F1 + F3 * cos(alpha)
+    result = F2 + F1 + F3 * cos(rad(alpha))
     return text, round(result, 1), URL
 
 print(task_9())
